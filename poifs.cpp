@@ -43,11 +43,16 @@ void POIFS::initVolumeInformation(const char *filename) {
 	memset(buffer, 0, BLOCK_SIZE);
 
 	/* Magic string "POIFS" */
-	memcpy(buffer + 0x00, "POIFS", 4);
+	memcpy(buffer + 0x00, "poi!", 4);
 
 	/* Nama volume */
-	this->filename = string(filename);
-	memcpy(buffer + 0x04, filename, strlen(filename));
+	if (strcmp(filename,"") == 0) {
+        this->filename = "POI!";
+	} else {
+        this->filename = string(filename);
+	}
+	memcpy(buffer + 0x04, filename, 32);
+	/*memcpy(buffer + 0x04, filename, strlen(filename));*/
 
 	/* Kapasitas filesystem, dalam little endian */
 	capacity = N_BLOCK;
@@ -62,7 +67,7 @@ void POIFS::initVolumeInformation(const char *filename) {
 	memcpy(buffer + 0x2C, (char*)&firstEmpty, 4);
 
 	/* String "SFCC" */
-	memcpy(buffer + 0x1FC, "SFCC", 4);
+	memcpy(buffer + 0x1FC, "!iop", 4);
 
 	handle.write(buffer, BLOCK_SIZE);
 }
@@ -89,7 +94,7 @@ void POIFS::initDataPool() {
 	}
 }
 
-/** baca file simple.fs */
+/** baca file .poifs */
 void POIFS::load(const char *filename){
 	/* buka file dengan mode input-output, dan binary */
 	handle.open(filename, fstream::in | fstream::out | fstream::binary);
@@ -115,7 +120,7 @@ void POIFS::readVolumeInformation() {
 	handle.read(buffer, BLOCK_SIZE);
 
 	/* cek magic string */
-	if (string(buffer, 4) != "POIFS") {
+	if (string(buffer, 4) != "poi!") {
 		handle.close();
 		throw runtime_error("File is not a valid POIFS file");
 	}
@@ -129,6 +134,37 @@ void POIFS::readVolumeInformation() {
 	/* baca firstEmpty */
 	memcpy((char*)&firstEmpty, buffer + 0x2C, 4);
 }
+
+/** menuliskan Volume Information */
+void POIFS::writeVolumeInformation() {
+	handle.seekp(0x00);
+
+	/* buffer untuk menulis ke file */
+	char buffer[BLOCK_SIZE];
+	memset(buffer, 0, BLOCK_SIZE);
+
+	/* Magic string "POIFS" */
+	memcpy(buffer + 0x00, "poi!", 4);
+
+	/* Nama volume */
+	memcpy(buffer + 0x04, filename.c_str(), 32);
+	/* memcpy(buffer + 0x04, filename.c_str(), filename.length()); */
+
+	/* Kapasitas filesystem, dalam little endian */
+	memcpy(buffer + 0x24, (char*)&capacity, 4);
+
+	/* Jumlah blok yang belum terpakai, dalam little endian */
+	memcpy(buffer + 0x28, (char*)&available, 4);
+
+	/* Indeks blok pertama yang bebas, dalam little endian */
+	memcpy(buffer + 0x2C, (char*)&firstEmpty, 4);
+
+	/* String "SFCC" */
+	memcpy(buffer + 0x1FC, "!iop", 4);
+
+	handle.write(buffer, BLOCK_SIZE);
+}
+
 /** membaca Allocation Table */
 void POIFS::readAllocationTable() {
 	char buffer[3];
@@ -142,44 +178,19 @@ void POIFS::readAllocationTable() {
 		memcpy((char*)&nextBlock[i], buffer, 2);
 	}
 }
-/** menuliskan Volume Information */
-void POIFS::writeVolumeInformation() {
-	handle.seekp(0x00);
 
-	/* buffer untuk menulis ke file */
-	char buffer[BLOCK_SIZE];
-	memset(buffer, 0, BLOCK_SIZE);
-
-	/* Magic string "POIFS" */
-	memcpy(buffer + 0x00, "POIFS", 4);
-
-	/* Nama volume */
-	memcpy(buffer + 0x04, filename.c_str(), filename.length());
-
-	/* Kapasitas filesystem, dalam little endian */
-	memcpy(buffer + 0x24, (char*)&capacity, 4);
-
-	/* Jumlah blok yang belum terpakai, dalam little endian */
-	memcpy(buffer + 0x28, (char*)&available, 4);
-
-	/* Indeks blok pertama yang bebas, dalam little endian */
-	memcpy(buffer + 0x2C, (char*)&firstEmpty, 4);
-
-	/* String "SFCC" */
-	memcpy(buffer + 0x1FC, "SFCC", 4);
-
-	handle.write(buffer, BLOCK_SIZE);
-}
 /** menuliskan Allocation Table pada posisi tertentu */
 void POIFS::writeAllocationTable(ptr_block position) {
 	handle.seekp(BLOCK_SIZE + sizeof(ptr_block) * position);
 	handle.write((char*)&nextBlock[position], sizeof(ptr_block));
 }
+
 /** mengatur Allocation Table */
 void POIFS::setNextBlock(ptr_block position, ptr_block next) {
 	nextBlock[position] = next;
 	writeAllocationTable(position);
 }
+
 /** mendapatkan first Empty yang berikutnya */
 ptr_block POIFS::allocateBlock() {
 	ptr_block result = firstEmpty;
@@ -193,19 +204,20 @@ ptr_block POIFS::allocateBlock() {
 	writeVolumeInformation();
 	return result;
 }
+
 /** membebaskan blok */
 void POIFS::freeBlock(ptr_block position) {
-	if (position == EMPTY_BLOCK) {
-		return;
+	if (position != EMPTY_BLOCK) {
+        while (position != END_BLOCK) {
+            ptr_block temp = nextBlock[position];
+            setNextBlock(position, EMPTY_BLOCK);
+            position = temp;
+            available--;
+        }
+        writeVolumeInformation();
 	}
-	while (position != END_BLOCK) {
-		ptr_block temp = nextBlock[position];
-		setNextBlock(position, EMPTY_BLOCK);
-		position = temp;
-		available--;
-	}
-	writeVolumeInformation();
 }
+
 /** membaca isi block sebesar size kemudian menaruh hasilnya di buf */
 int POIFS::readBlock(ptr_block position, char *buffer, int size, int offset) {
 	/* kalau sudah di END_BLOCK, return */

@@ -1,0 +1,7 @@
+#!/bin/ksh
+file="../coba/test"
+while read line
+do
+        # display $line or do somthing with $line
+	echo "$line"
+done <"$file"

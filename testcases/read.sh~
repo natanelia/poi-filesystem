@@ -1,0 +1,7 @@
+#!/bin/bash
+echo "// READ TEST //"
+file="../coba/test"
+while read line
+do
+	echo "$line"
+done <"$file"
