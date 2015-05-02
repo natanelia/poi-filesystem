@@ -1,6 +1,6 @@
 #include <iostream>
 #include "fuse_impl.hpp"
-#include "poifs.hpp"
+#include "poi.hpp"
 
 using namespace std;
 

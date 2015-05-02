@@ -1,6 +1,6 @@
 #include <stdexcept>
 
-#include "poifs.hpp"
+#include "poi.hpp"
 
 /* Global filesystem */
 extern POIFS filesystem;

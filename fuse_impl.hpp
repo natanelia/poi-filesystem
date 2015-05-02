@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "poifs.hpp"
+#include "poi.hpp"
 
 int poifs_getattr(const char* path, struct stat* stbuf);
 
