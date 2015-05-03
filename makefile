@@ -1,14 +1,17 @@
-all: main.cpp poi.o fuse_impl.o
-	g++ main.cpp poi.o fuse_impl.o -D_FILE_OFFSET_BITS=64 `pkg-config fuse --cflags --libs` -o mount-poi
+all: main.cpp fuse-poi poi
+	g++ main.cpp poi.o fuse_poi.o -D_FILE_OFFSET_BITS=64 `pkg-config fuse --cflags --libs` -o mount-poi
 
-poifs.o : poifs.hpp poifs.cpp
+poi : poi.h poi.cpp
 	g++ -Wall -c poi.cpp -D_FILE_OFFSET_BITS=64
 
-fuse_impl.o : fuse_impl.hpp fuse_impl.cpp
-	g++ -Wall -c fuse_impl.cpp -D_FILE_OFFSET_BITS=64
+fuse-poi : fuse_poi.h fuse_poi.cpp
+	g++ -Wall -c fuse_poi.cpp -D_FILE_OFFSET_BITS=64
 
 clean:
 	rm *~
 
 clear:
 	rm *.o
+
+test : test/read.sh
+	./test/read.sh

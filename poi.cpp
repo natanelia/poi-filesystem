@@ -1,6 +1,6 @@
 #include <stdexcept>
 
-#include "poi.hpp"
+#include "poi.h"
 
 /* Global filesystem */
 extern POIFS filesystem;
@@ -441,7 +441,9 @@ string Entry::getName() {
 }
 
 unsigned char Entry::getAttr() {
-	return *(data + 0x15);
+	unsigned char result;
+	memcpy(&result, data + 0x15, 1);	
+	return result;
 }
 
 short Entry::getTime() {
@@ -473,7 +475,8 @@ void Entry::setName(const char* name) {
 }
 
 void Entry::setAttr(const unsigned char attr) {
-	data[0x15] = attr;
+	memcpy(data + 0x15, &attr, 1);	
+//data[0x15] = attr;
 }
 
 void Entry::setTime(const short time) {
