@@ -27,7 +27,17 @@ int poifs_getattr(const char* path, struct stat* stbuf) {
 		stbuf->st_nlink = 1;
 
 		// cek direktori atau bukan
-		if (entry.getAttr() & 0x8) {
+
+		if (entry.getAttr() & 0x40) {
+			stbuf->st_mode = S_IFBLK | (0660 + (entry.getAttr() & 0x7));
+		}
+		else if (entry.getAttr() & 0x20) {
+			stbuf->st_mode = S_IFCHR | (0660 + (entry.getAttr() & 0x7));
+		}
+		else if (entry.getAttr() & 0x10) {
+			stbuf->st_mode = S_IFIFO | (0660 + (entry.getAttr() & 0x7));
+		}
+		else if (entry.getAttr() & 0x8) {
 			stbuf->st_mode = S_IFDIR | (0770 + (entry.getAttr() & 0x7));
 		}
 		else {
@@ -191,6 +201,10 @@ int poifs_mknod(const char *path, mode_t mode, dev_t dev) {
 
 	/* menuliskan data di entry tersebut */
 	entry.setName(path + i + 1);
+	entry.setAttr(0x1F);
+	entry.setTime(0x00);
+	entry.setCurrentDateTime();
+	entry.setIndex(filesystem.allocateBlock());
 	entry.setSize(0x00);
 
 	entry.write();
@@ -289,6 +303,21 @@ int poifs_link(const char *path, const char *newpath) {
 		totalsize -= sizenow;
 		offset += 4096;
 	}
+
+	return 0;
+}
+
+int poifs_chmod(const char *path, mode_t mode)
+{
+	Entry entry = Entry(0, 0).getEntry(path);
+
+	//Kalau path tidak ditemukan
+	if (entry.isEmpty()) {
+		return -ENOENT;
+	}
+	
+	entry.setAttr(0660 + (0x7 & mode));
+	entry.write();
 
 	return 0;
 }

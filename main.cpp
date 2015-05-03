@@ -21,6 +21,7 @@ void init_fuse() {
 	poifs_op.write	= poifs_write;
 	poifs_op.read	= poifs_read;
 	poifs_op.link	= poifs_link;
+	poifs_op.chmod  = poifs_chmod;
 }
 
 int main(int argc, char** argv){
